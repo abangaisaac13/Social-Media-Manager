@@ -1,0 +1,12 @@
+{
+  "name": "social-media-manager",
+  "version": "1.0.0",
+  "description": "Automated AI Social Media Publisher with Gemini and Puppeteer",
+  "main": "server.js",
+  "dependencies": {
+    "@google/genai": "^0.1.1",
+    "express": "^4.19.2",
+    "node-fetch": "^3.3.2",
+    "puppeteer": "^22.6.0"
+  }
+}
