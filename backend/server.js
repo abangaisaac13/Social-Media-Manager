@@ -1,5 +1,5 @@
 /**
- * Automated Social Media Manager & AI Content Publisher with X, LinkedIn, & Meta Integration
+ * Automated Social Media Manager & AI Content Publisher with X, LinkedIn, Meta, & TikTok Integration
  */
 const express = require('express');
 const { GoogleGenAI } = require('@google/genai');
@@ -38,7 +38,7 @@ Generate a JSON response for a professional social media post with:
 async function generateInfographicCard(contentData) {
   const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'] });
   const page = await browser.newPage();
-  await page.setViewport({ width: 1080, height: 1080 });
+  await page.setViewport({ width: 1080, height: 1920 }); // Vertical 9:16 format optimized for TikTok / Reels / Shorts
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -47,25 +47,25 @@ async function generateInfographicCard(contentData) {
       <style>
         body {
           width: 1080px;
-          height: 1080px;
+          height: 1920px;
           background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
           color: #FFFFFF;
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          padding: 80px;
+          padding: 100px;
           box-sizing: border-box;
           margin: 0;
         }
         .header { display: flex; justify-content: space-between; align-items: center; }
-        .tag { background: #38BDF8; color: #0F172A; font-weight: bold; padding: 10px 20px; border-radius: 30px; font-size: 20px; }
-        .brand { font-size: 24px; color: #94A3B8; font-weight: 600; }
-        .content { margin-top: 40px; }
-        h1 { font-size: 56px; line-height: 1.2; margin-bottom: 40px; color: #F8FAFC; }
-        .bullet { font-size: 32px; line-height: 1.5; margin-bottom: 24px; color: #CBD5E1; display: flex; align-items: center; }
-        .bullet::before { content: "▪"; color: #38BDF8; font-size: 50px; margin-right: 20px; }
-        .footer { font-size: 24px; color: #38BDF8; border-top: 2px solid #334155; padding-top: 30px; display: flex; justify-content: space-between; }
+        .tag { background: #38BDF8; color: #0F172A; font-weight: bold; padding: 12px 24px; border-radius: 30px; font-size: 24px; }
+        .brand { font-size: 28px; color: #94A3B8; font-weight: 600; }
+        .content { margin-top: 100px; }
+        h1 { font-size: 68px; line-height: 1.2; margin-bottom: 50px; color: #F8FAFC; }
+        .bullet { font-size: 38px; line-height: 1.5; margin-bottom: 30px; color: #CBD5E1; display: flex; align-items: center; }
+        .bullet::before { content: "▪"; color: #38BDF8; font-size: 60px; margin-right: 20px; }
+        .footer { font-size: 28px; color: #38BDF8; border-top: 2px solid #334155; padding-top: 40px; display: flex; justify-content: space-between; }
       </style>
     </head>
     <body>
@@ -79,7 +79,7 @@ async function generateInfographicCard(contentData) {
       </div>
       <div class="footer">
         <span>Curated Daily Insights</span>
-        <span>Swipe / Read More ➔</span>
+        <span>Swipe / Follow ➔</span>
       </div>
     </body>
     </html>
@@ -93,30 +93,27 @@ async function generateInfographicCard(contentData) {
 
 // 3. Social Media Publishing Functions
 async function postToTwitter(caption, imageBuffer) {
-  if (!process.env.TWITTER_BEARER_TOKEN) {
-    console.log("⚠️ Twitter credentials missing. Skipping Twitter post.");
-    return;
-  }
-  // Twitter API v2 implementation placeholder
+  if (!process.env.TWITTER_BEARER_TOKEN) return;
   console.log("Posting to Twitter...");
 }
 
 async function postToLinkedIn(caption, imageBuffer) {
-  if (!process.env.LINKEDIN_ACCESS_TOKEN) {
-    console.log("⚠️ LinkedIn credentials missing. Skipping LinkedIn post.");
-    return;
-  }
-  // LinkedIn API implementation placeholder
+  if (!process.env.LINKEDIN_ACCESS_TOKEN) return;
   console.log("Posting to LinkedIn...");
 }
 
 async function postToFacebook(caption, imageBuffer) {
-  if (!process.env.FB_PAGE_ACCESS_TOKEN) {
-    console.log("⚠️ Facebook credentials missing. Skipping Facebook post.");
+  if (!process.env.FB_PAGE_ACCESS_TOKEN) return;
+  console.log("Posting to Facebook/Instagram...");
+}
+
+async function postToTikTok(caption, imageBuffer) {
+  if (!process.env.TIKTOK_ACCESS_TOKEN) {
+    console.log("⚠️ TikTok credentials missing. Skipping TikTok post.");
     return;
   }
-  // Meta Graph API implementation placeholder
-  console.log("Posting to Facebook/Instagram...");
+  // TikTok Content Posting API implementation placeholder
+  console.log("Posting Photo Carousel to TikTok...");
 }
 
 // Main execution flow for automated cron runner
@@ -127,19 +124,19 @@ async function runAutomatedPublisher() {
   console.log("✨ Generated AI Content:", content.headline);
 
   const imageBuffer = await generateInfographicCard(content);
-  console.log("🎨 Infographic Image Card Generated Successfully.");
+  console.log("🎨 Vertical Infographic Image Card Generated Successfully.");
 
-  const caption = `${content.headline}\n\n${content.bullets.map(b => `• ${b}`).join('\n')}\n\n${content.cta}\n\n${content.category} #Ghana #Education #Tech`;
+  const caption = `${content.headline}\n\n${content.bullets.map(b => `• ${b}`).join('\n')}\n\n${content.cta}\n\n${content.category} #Ghana #Education #Tech #TikTokGhana`;
 
   // Dispatch to all connected platforms
   await postToTwitter(caption, imageBuffer);
   await postToLinkedIn(caption, imageBuffer);
   await postToFacebook(caption, imageBuffer);
+  await postToTikTok(caption, imageBuffer);
 
   console.log("✅ Automated Publishing Cycle Completed.");
 }
 
-// If executed directly by GitHub Actions or node
 if (require.main === module) {
   runAutomatedPublisher()
     .then(() => process.exit(0))
@@ -148,12 +145,3 @@ if (require.main === module) {
       process.exit(1);
     });
 }
-
-app.post('/api/publish-post', async (req, res) => {
-  try {
-    await runAutomatedPublisher();
-    res.json({ success: true, message: "Published successfully!" });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
