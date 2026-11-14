@@ -22,6 +22,9 @@ jobs:
           cd backend
           npm install
 
+      - name: Install Puppeteer Chrome Dependencies
+        run: npx puppeteer browsers install chrome
+
       - name: Run Automated Publisher
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
