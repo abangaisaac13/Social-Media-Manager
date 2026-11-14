@@ -31,7 +31,9 @@ Generate a JSON response for a professional social media post with:
       }
     });
 
-    return JSON.parse(response.text());
+    // NOTE: response.text is a property string, NOT a function!
+    const rawText = response.text;
+    return JSON.parse(rawText);
   } catch (error) {
     console.error("❌ Gemini API Error:", error);
     throw error;
