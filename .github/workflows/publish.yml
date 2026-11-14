@@ -2,34 +2,19 @@ name: Automated Social Media Publisher
 
 on:
   schedule:
+    # Runs every 4 hours
     - cron: '0 */4 * * *'
   workflow_dispatch:
 
 jobs:
   post-to-social:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Install Dependencies & Puppeteer Browser
-        run: |
-          cd backend
-          npm install
-          npx puppeteer browsers install chrome
-
-      - name: Run Automated Publisher
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN }}
-          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
-          FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
-          TIKTOK_ACCESS_TOKEN: ${{ secrets.TIKTOK_ACCESS_TOKEN }}
-        run: |
-          cd backend
-          node server.js
