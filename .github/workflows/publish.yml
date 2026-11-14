@@ -17,13 +17,11 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install Dependencies
+      - name: Install Dependencies & Puppeteer Browser
         run: |
           cd backend
           npm install
-
-      - name: Install Puppeteer Chrome Dependencies
-        run: npx puppeteer browsers install chrome
+          npx puppeteer browsers install chrome
 
       - name: Run Automated Publisher
         env:
