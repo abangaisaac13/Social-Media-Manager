@@ -1,6 +1,6 @@
 # User Data Deletion Instructions
 
-In accordance with Meta Platform and Facebook Developer policies, **Opportunities & Insights Africa** / **Social-Medial-Manager** provides clear instructions on how users can request data deletion.
+In accordance with Meta Platform and Facebook Developer policies, **Daily Opportunities Hub** / **Social-Medial-Manager** provides clear instructions on how users can request data deletion.
 
 ## Data Collection Overview
 Our application operates as an automated public content aggregator and publisher (Jobs & News). We do not store personal user profiles, private messages, or restricted user data on our servers. Any cached records in our system consist solely of publicly available job hashes and news article identifiers stored locally in `storage/published.json` for duplicate prevention.
