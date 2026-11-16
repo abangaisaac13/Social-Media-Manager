@@ -1,0 +1,17 @@
+{
+  "name": "opportunity-wire-gh",
+  "version": "1.0.0",
+  "description": "Automated Social Media Manager for Opportunities & Insights Africa",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "openai": "^4.0.0",
+    "rss-parser": "^3.13.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
