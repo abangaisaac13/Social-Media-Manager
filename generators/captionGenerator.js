@@ -24,11 +24,11 @@ Content Source/Details: ${item.company || item.source || ''} - ${item.snippet ||
 Category: ${item.category}
 `;
 
-    // 1. Try Gemini first (Free tier, easy Google AI Studio key)
+    // 1. Try Gemini first using gemini-pro (universally supported on Google AI Studio)
     if (geminiApiKey && geminiApiKey !== 'your_gemini_api_key_here') {
         try {
             const genAI = new GoogleGenerativeAI(geminiApiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
             const result = await model.generateContent(prompt);
             const response = await result.response;
             aiText = response.text().trim();
