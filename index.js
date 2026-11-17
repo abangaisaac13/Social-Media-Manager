@@ -61,7 +61,11 @@ async function runWorkflow() {
         console.log(generated.caption);
         console.log(`------------------------------------`);
 
-        if (generated.infographicUrl) {
+        if (generated.imageBuffer) {
+            console.log(`\n--- [GENERATED GEMINI INFOGRAPHIC IMAGE] ---`);
+            console.log(`Successfully generated image buffer (${generated.imageBuffer.length} bytes) using Gemini free tier.`);
+            console.log(`-----------------------------------------------`);
+        } else if (generated.infographicUrl) {
             console.log(`\n--- [GENERATED INFOGRAPHIC IMAGE URL] ---`);
             console.log(generated.infographicUrl);
             console.log(`-----------------------------------------`);

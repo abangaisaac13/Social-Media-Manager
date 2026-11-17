@@ -41,28 +41,52 @@ function savePublished(item, fbResponseId) {
     }
 }
 
-async function postToFacebook(message, imageUrl) {
+async function postToFacebook(message, imageUrl, imageBuffer) {
     const pageId = process.env.FACEBOOK_PAGE_ID || 'me';
     const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
 
-    const endpoint = imageUrl
+    const endpoint = (imageUrl || imageBuffer)
         ? `https://graph.facebook.com/v27.0/${pageId}/photos`
         : `https://graph.facebook.com/v27.0/${pageId}/feed`;
 
-    const bodyData = imageUrl
-        ? { url: imageUrl, caption: message, access_token: accessToken }
-        : { message, access_token: accessToken };
+    let response;
+    if (imageBuffer) {
+        const formData = new FormData();
+        formData.append('access_token', accessToken);
+        formData.append('caption', message);
+        formData.append('source', new Blob([imageBuffer], { type: 'image/jpeg' }), 'infographic.jpg');
 
-    const response = await fetch(
-        endpoint,
-        {
+        response = await fetch(endpoint, {
+            method: "POST",
+            body: formData
+        });
+    } else if (imageUrl) {
+        response = await fetch(endpoint, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(bodyData)
-        }
-    );
+            body: JSON.stringify({
+                url: imageUrl,
+                caption: message,
+                access_token: accessToken
+            })
+        });
+    } else {
+        response = await fetch(
+            endpoint,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    message,
+                    access_token: accessToken
+                })
+            }
+        );
+    }
 
     const data = await response.json();
 
@@ -88,7 +112,9 @@ async function publishToFacebook(item, generatedContent) {
         console.log(`[DRY RUN] Facebook Access Token not configured. Simulating post for: "${item.title}"`);
         console.log('--- Post Content ---');
         console.log(postMessage);
-        if (generatedContent.infographicUrl) {
+        if (generatedContent.imageBuffer) {
+            console.log(`🖼️ Gemini Infographic Image Buffer generated successfully (${generatedContent.imageBuffer.length} bytes).`);
+        } else if (generatedContent.infographicUrl) {
             console.log(`🖼️ Infographic Image URL: ${generatedContent.infographicUrl}`);
         }
         console.log('--------------------');
@@ -98,7 +124,7 @@ async function publishToFacebook(item, generatedContent) {
     }
 
     try {
-        const data = await postToFacebook(postMessage, generatedContent.infographicUrl);
+        const data = await postToFacebook(postMessage, generatedContent.infographicUrl, generatedContent.imageBuffer);
         const postId = data.id || data.post_id;
         console.log(`[SUCCESS] Published to Facebook! Post ID: ${postId}`);
         savePublished(item, postId);
