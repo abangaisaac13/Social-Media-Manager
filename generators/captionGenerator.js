@@ -38,22 +38,31 @@ Category: ${item.category}
         openai = new OpenAI({ apiKey: openaiApiKey });
     }
 
-    // 1. Try Gemini first (Free Tier)
+    // 1. Try Gemini using the latest model (gemini-2.5-flash)
     if (genAI) {
         try {
-            const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
             const result = await geminiModel.generateContent(prompt);
             aiText = result.response.text().trim();
-            console.log("Successfully generated text using Gemini AI.");
+            console.log("Successfully generated text using Gemini 2.5 Flash.");
         } catch (geminiError) {
             console.error("Gemini API Error Details:", geminiError.message);
+
+            // Try fallback to gemini-2.0-flash or gemini-1.5-flash if 2.5 encounters an issue
+            try {
+                const fallbackModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+                const fallbackResult = await fallbackModel.generateContent(prompt);
+                aiText = fallbackResult.response.text().trim();
+                console.log("Successfully generated text using Gemini 2.0 Flash fallback.");
+            } catch (fallbackError) {
+                console.error("Gemini 2.0 Flash Fallback Error Details:", fallbackError.message);
+            }
         }
     }
 
-    // 2. Fallback to OpenAI if Gemini failed or key not set
+    // 2. Fallback to OpenAI if Gemini failed
     if (!aiText && openai) {
         try {
-            console.log("Falling back to OpenAI for text generation...");
             const response = await openai.chat.completions.create({
                 model: "gpt-4o-mini",
                 messages: [{ role: "user", content: prompt }]
@@ -66,7 +75,6 @@ Category: ${item.category}
 
     // 3. Ultimate Fallback Template
     if (!aiText) {
-        console.log("Using default fallback template for text generation.");
         if (isJob) {
             aiText = `
 📌 HEADLINE: ${item.title} at ${item.company || 'Verified Employer'}
@@ -108,60 +116,24 @@ What are your thoughts on this? Drop a comment below, like this post, and share 
         }
     }
 
-    // Image Generation: Use Gemini Free Tier (Imagen 3) first, fallback to OpenAI DALL-E 3
-    let infographicUrl = null;
-    let imageBuffer = null;
-
-    if (genAI) {
-        try {
-            console.log("Generating infographic image using Gemini Free Tier (Imagen 3)...");
-            const imageModel = genAI.getGenerativeModel({ model: "imagen-3.0-generate-002" });
-            const imageResponse = await imageModel.generateImages({
-                prompt: isJob
-                    ? `Professional, clean, minimalist corporate job opportunity graphic for "${item.title}" at "${item.company || 'Hiring Company'}". Modern color palette of deep navy blue, teal, and white. Clean typography highlighting key role details. Business recruitment style, high resolution, clear at a glance, no clutter.`
-                    : `Professional, clean, minimalist corporate news infographic design for "${item.title}". Modern color palette of deep navy blue, white, and slate grey. Clean sans-serif typography showing key takeaways. Business presentation style, high resolution, easily understood at a glance, no clutter.`,
-                config: {
-                    numberOfImages: 1,
-                    outputMimeType: 'image/jpeg',
-                    aspectRatio: '1:1',
-                },
-            });
-
-            if (imageResponse && imageResponse.generatedImages && imageResponse.generatedImages[0]) {
-                const base64Bytes = imageResponse.generatedImages[0].image.imageBytes;
-                imageBuffer = Buffer.from(base64Bytes, 'base64');
-                console.log("Successfully generated infographic image using Gemini Imagen 3.");
-            }
-        } catch (geminiImageError) {
-            console.error("Gemini Imagen 3 Error Details:", geminiImageError.message);
-        }
-    }
-
-    // Fallback image generation to OpenAI DALL-E 3 if Gemini image generation failed
-    if (!imageBuffer && openai) {
-        try {
-            console.log("Falling back to OpenAI DALL-E 3 for image generation...");
-            const imageResponse = await openai.images.generate({
-                model: "dall-e-3",
-                prompt: isJob
-                    ? `A professional, clean, minimalist corporate job opportunity graphic for "${item.title}" at "${item.company || 'Hiring Company'}". Modern color palette of deep navy blue, teal, and white. Clean typography highlighting key role details.`
-                    : `A professional, clean, minimalist corporate news infographic design for "${item.title}". Modern color palette of deep navy blue, white, and slate grey.`,
-                n: 1,
-                size: "1024x1024"
-            });
-            infographicUrl = imageResponse.data[0].url;
-            console.log("Successfully generated image using OpenAI DALL-E 3.");
-        } catch (dalleError) {
-            console.error("DALL-E 3 Error Details:", dalleError.message);
-        }
-    }
+    // Generate a clean, professional visual infographic card layout (text-based visual card)
+    const infographic = `
+╔════════════════════════════════════════╗
+║ 🌟 ${item.title.substring(0, 38).toUpperCase()}
+╠════════════════════════════════════════╣
+║ • Verified Opportunity / Insight       ║
+║ • Curated for Professional Growth      ║
+║ • Actionable & Reliable                ║
+╚════════════════════════════════════════╝
+`.trim();
 
     const caption = `${finalAiText}\n\n#OpportunitiesAndInsightsAfrica #DailyOpportunityHub #CareerGrowth #News`;
 
     return {
         caption,
-        infographicUrl,
-        imageBuffer
+        infographic,
+        infographicUrl: null,
+        imageBuffer: null
     };
 }
 
