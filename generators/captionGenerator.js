@@ -24,17 +24,17 @@ Content Source/Details: ${item.company || item.source || ''} - ${item.snippet ||
 Category: ${item.category}
 `;
 
-    // 1. Try Gemini first using gemini-1.5-flash-latest
+    // 1. Try Gemini first using gemini-2.5-flash
     if (geminiApiKey && geminiApiKey !== 'your_gemini_api_key_here') {
         try {
             const genAI = new GoogleGenerativeAI(geminiApiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
             const result = await model.generateContent(prompt);
             const response = await result.response;
             aiText = response.text().trim();
         } catch (error) {
             try {
-                // Retry with gemini-1.5-flash
+                // Fallback to gemini-1.5-flash
                 const genAI = new GoogleGenerativeAI(geminiApiKey);
                 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
                 const result = await model.generateContent(prompt);
@@ -49,15 +49,19 @@ Category: ${item.category}
     // 2. Try OpenAI if Gemini wasn't used or failed
     if (!aiText && openaiApiKey && openaiApiKey !== 'your_openai_api_key_here') {
         try {
-            const openai = new OpenAI({ apiKey: openaiApiKey });
-            const completion = await openai.chat.completions.create({
-                model: "gpt-4o-mini",
-                messages: [{ role: "user", content: prompt }],
-                max_tokens: 250,
-                temperature: 0.5,
-            });
+            if (process.env.OPENAI_API_KEY) {
+                const openai = new OpenAI({
+                    apiKey: process.env.OPENAI_API_KEY
+                });
+                const completion = await openai.chat.completions.create({
+                    model: "gpt-4o-mini",
+                    messages: [{ role: "user", content: prompt }],
+                    max_tokens: 250,
+                    temperature: 0.5,
+                });
 
-            aiText = completion.choices[0].message.content.trim();
+                aiText = completion.choices[0].message.content.trim();
+            }
         } catch (error) {
             console.error('OpenAI API error, falling back to default template:', error.message);
         }

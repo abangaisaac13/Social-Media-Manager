@@ -3,7 +3,7 @@ name: Automated Social Media Publishing
 on:
   schedule:
     - cron: '0 */4 * * *' # Every 4 hours
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
   publish:
@@ -17,19 +17,29 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-
-      - name: Cache Node Modules
-        id: cache-node-modules
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+          cache: 'npm'
 
       - name: Install Dependencies
-        if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        run: npm install
+        run: npm ci
+
+      - name: Verify Required Secrets
+        run: |
+          if [ -z "${{ secrets.GEMINI_API_KEY }}" ]; then
+            echo "ERROR: GEMINI_API_KEY is missing"
+            exit 1
+          fi
+
+          if [ -z "${{ secrets.FACEBOOK_ACCESS_TOKEN }}" ]; then
+            echo "ERROR: FACEBOOK_ACCESS_TOKEN is missing"
+            exit 1
+          fi
+
+          if [ -z "${{ secrets.FACEBOOK_PAGE_ID }}" ]; then
+            echo "ERROR: FACEBOOK_PAGE_ID is missing"
+            exit 1
+          fi
+
+          echo "Required secrets verified"
 
       - name: Run Publishing Bot
         env:

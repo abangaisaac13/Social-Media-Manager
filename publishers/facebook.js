@@ -63,9 +63,8 @@ async function publishToFacebook(item, generatedContent) {
     }
 
     try {
-        // If FACEBOOK_PAGE_ID is 'me', post to personal timeline, otherwise post to page feed
         const targetEndpoint = pageId === 'me' ? 'me/feed' : `${pageId}/feed`;
-        const url = `https://graph.facebook.18.0/v18.0/${targetEndpoint}`;
+        const url = `https://graph.facebook.com/v18.0/${targetEndpoint}`;
 
         const response = await fetch(url, {
             method: 'POST',
