@@ -35,7 +35,7 @@ Category: ${item.category}
         try {
             const genAI = new GoogleGenerativeAI(geminiApiKey);
             const geminiModel = genAI.getGenerativeModel({
-                model: "gemini-2.5-flash"
+                model: "gemini-1.5-flash"
             });
             const result = await geminiModel.generateContent(prompt);
             aiText = result.response.text().trim();
@@ -43,7 +43,7 @@ Category: ${item.category}
             console.log("Gemini API error, trying OpenAI fallback:", geminiError.message);
 
             if (!openai) {
-                aiText = prompt;
+                // Will use default template
             } else {
                 try {
                     const response = await openai.chat.completions.create({
