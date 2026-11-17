@@ -6,10 +6,10 @@ const { generateTikTokScript } = require('./generators/tiktokScriptGenerator');
 const { publishToFacebook } = require('./publishers/facebook');
 const { queueTikTokContent } = require('./publishers/tiktok');
 
-// Posting Rules limits per run / day
+// Posting Rules limits per run / day (Prioritizing Job Listings)
 const LIMITS = {
-    'Jobs': 2,         // Max per run
-    'Local News': 2,   // Max per run
+    'Jobs': 3,         // Prioritized max per run
+    'Local News': 1,   // Max per run
     'World News': 1    // Max per run
 };
 

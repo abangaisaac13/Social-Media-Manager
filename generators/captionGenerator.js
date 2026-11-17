@@ -7,6 +7,8 @@ async function generateSummaryAndCaption(item) {
 
     let aiText = '';
 
+    const isJob = item.category === 'Jobs';
+
     const prompt = `
 Summarize the following content item into:
 1. Headline
@@ -18,6 +20,9 @@ Guidelines:
 - No sensationalism.
 - Maximum 120 words.
 - Do NOT include any "Why It Matters" section.
+${isJob
+    ? '- For this Job Listing: The Call To Action must direct interested candidates to apply via the official link provided.'
+    : '- For this News/Update: The Call To Action must strictly encourage social engagement only (e.g., inviting comments, likes, shares, or reposts). Do NOT direct users to visit external websites or links.'}
 
 Content Title: ${item.title}
 Content Source/Details: ${item.company || item.source || ''} - ${item.snippet || item.link || ''}
@@ -78,36 +83,47 @@ Category: ${item.category}
         }
     }
 
-    // Fallback template if no API keys are configured or both fail (Without "Why It Matters")
+    // Fallback template if no API keys are configured or both fail
     if (!aiText) {
-        if (item.category === 'Jobs') {
+        if (isJob) {
             aiText = `
-📌 HEADLINE: ${item.title} at ${item.company}
-📍 Location: ${item.location}
+📌 HEADLINE: ${item.title} at ${item.company || 'Verified Employer'}
+📍 Location: ${item.location || 'Remote / Various'}
 
 Key Points:
-1. Position currently open at ${item.company}.
-2. Great opportunity for career growth in ${item.location}.
-3. Apply promptly to secure consideration.
+1. Position currently open with verified requirements.
+2. Excellent opportunity for career growth and professional advancement.
+3. Qualified candidates are encouraged to apply promptly.
 
 Call To Action:
-Apply via the link below:
+Apply via the official link below:
 ${item.link}
 `;
         } else {
             aiText = `
 📌 HEADLINE: ${item.title}
-📰 Source: ${item.source}
+📰 Source: ${item.source || 'Trusted Source'}
 
 Key Points:
 1. Important development regarding ${item.title.toLowerCase()}.
-2. Key stakeholders are monitoring the situation closely.
-3. Long-term impacts expected across related sectors.
+2. Key updates and community impacts being monitored.
+3. Insights for professionals and stakeholders.
 
 Call To Action:
-Read the full article here:
-${item.link}
+What are your thoughts on this? Drop a comment below, like this post, and share or repost with your network!
 `;
+        }
+    }
+
+    // Append Trust & Safety cautionary reminder specifically for job listings
+    let finalAiText = aiText;
+    if (isJob) {
+        // Ensure application link & caution disclaimer are present
+        if (!finalAiText.includes(item.link)) {
+            finalAiText += `\n\nApply via official link:\n${item.link}`;
+        }
+        if (!finalAiText.includes('Safety Reminder')) {
+            finalAiText += `\n\n⚠️ Safety Reminder: While we curate opportunities from trusted sources, please exercise caution. Never pay any money or fees to apply or secure employment.`;
         }
     }
 
@@ -117,7 +133,9 @@ ${item.link}
         try {
             const imageResponse = await openai.images.generate({
                 model: "dall-e-3",
-                prompt: `A professional, clean, minimalist corporate infographic design for a social media post with the bold title "${item.title}". Modern color palette of deep navy blue, white, and slate grey. Clean sans-serif typography showing 3 key takeaway bullet points. Business presentation style, high resolution, easily understood at a glance, no clutter, no watermarks.`,
+                prompt: isJob
+                    ? `A professional, clean, minimalist corporate job opportunity graphic for "${item.title}" at "${item.company || 'Hiring Company'}". Modern color palette of deep navy blue, teal, and white. Clean typography highlighting key role details. Business recruitment style, high resolution, clear at a glance, no clutter, no watermarks.`
+                    : `A professional, clean, minimalist corporate news infographic design for "${item.title}". Modern color palette of deep navy blue, white, and slate grey. Clean sans-serif typography showing key takeaways. Business presentation style, high resolution, easily understood at a glance, no clutter, no watermarks.`,
                 n: 1,
                 size: "1024x1024"
             });
@@ -127,7 +145,7 @@ ${item.link}
         }
     }
 
-    const caption = `${aiText}\n\n#OpportunitiesAndInsightsAfrica #DailyOpportunityHub #CareerGrowth #News`;
+    const caption = `${finalAiText}\n\n#OpportunitiesAndInsightsAfrica #DailyOpportunityHub #CareerGrowth #News`;
 
     return {
         caption,
