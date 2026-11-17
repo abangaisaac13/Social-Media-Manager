@@ -5,8 +5,6 @@ const { generateSummaryAndCaption } = require('./generators/captionGenerator');
 const { generateTikTokScript } = require('./generators/tiktokScriptGenerator');
 const { publishToFacebook } = require('./publishers/facebook');
 const { queueTikTokContent } = require('./publishers/tiktok');
-const fs = require('fs');
-const path = require('path');
 
 // Posting Rules limits per run / day
 const LIMITS = {
@@ -17,7 +15,7 @@ const LIMITS = {
 
 async function runWorkflow() {
     console.log('========================================');
-    console.log('🚀 Starting Social Media Manager Workflow (Phase 1 & Phase 2 - TikTok Integration)');
+    console.log('🔍 CONTENT GENERATION & PUBLISHING TEST');
     console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
     console.log('========================================');
 
@@ -38,6 +36,7 @@ async function runWorkflow() {
     ];
 
     const categoryCounts = { 'Jobs': 0, 'Local News': 0, 'World News': 0 };
+    let generatedCount = 0;
     let publishedCount = 0;
     let tiktokQueuedCount = 0;
 
@@ -46,19 +45,30 @@ async function runWorkflow() {
         const maxLimit = LIMITS[category] || 1;
 
         if (categoryCounts[category] >= maxLimit) {
-            console.log(`[LIMIT] Reached limit for category "${category}". Skipping remaining.`);
             continue;
         }
 
-        console.log(`\n⚙️ Processing [${category}]: "${item.title}"`);
+        console.log(`\n----------------------------------------`);
+        console.log(`⚙️ Processing [${category}]: "${item.title}"`);
+        console.log(`🔗 Link: ${item.link}`);
 
-        // 2. AI Summarizer & Infographic Generator
+        // 2. AI Summarizer & Infographic Generator Test
+        console.log(`🤖 Generating AI Summary & Infographic...`);
         const generated = await generateSummaryAndCaption(item);
+        generatedCount++;
+
+        console.log(`\n--- [GENERATED CAPTION PREVIEW] ---`);
+        console.log(generated.caption);
+        console.log(`------------------------------------`);
+
+        console.log(`\n--- [GENERATED INFOGRAPHIC PREVIEW] ---`);
+        console.log(generated.infographic);
+        console.log(`---------------------------------------`);
 
         // 3. Publish to Facebook
         const fbResult = await publishToFacebook(item, generated);
 
-        // 4. Generate & Queue TikTok Content (Phase 2 integration)
+        // 4. Generate & Queue TikTok Content
         const tiktokScript = generateTikTokScript(item);
         const tiktokResult = await queueTikTokContent(item, tiktokScript);
 
@@ -72,12 +82,12 @@ async function runWorkflow() {
         }
 
         // Add small delay between items
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     console.log('\n========================================');
-    console.log('✅ Workflow Completed Successfully!');
-    console.log(`📊 Summary: Published ${publishedCount} to Facebook | Queued ${tiktokQueuedCount} for TikTok.`);
+    console.log('✅ Diagnostic Test Workflow Completed!');
+    console.log(`📊 Summary: Generated ${generatedCount} items | Published ${publishedCount} to Facebook | Queued ${tiktokQueuedCount} for TikTok.`);
     console.log('========================================');
 }
 
