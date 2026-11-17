@@ -46,7 +46,7 @@ async function postToFacebook(message) {
     const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
 
     const response = await fetch(
-        `https://graph.facebook.com/v18.0/${pageId}/feed`,
+        `https://graph.facebook.com/v27.0/${pageId}/feed`,
         {
             method: "POST",
             headers: {
@@ -62,6 +62,7 @@ async function postToFacebook(message) {
     const data = await response.json();
 
     if (data.error) {
+        console.error('Facebook API Error Details:', JSON.stringify(data.error, null, 2));
         throw new Error(data.error.message);
     }
 
