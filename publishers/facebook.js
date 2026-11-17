@@ -41,9 +41,35 @@ function savePublished(item, fbResponseId) {
     }
 }
 
+async function postToFacebook(message) {
+    const pageId = process.env.FACEBOOK_PAGE_ID || 'me';
+    const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
+
+    const response = await fetch(
+        `https://graph.facebook.com/v18.0/${pageId}/feed`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                message,
+                access_token: accessToken
+            })
+        }
+    );
+
+    const data = await response.json();
+
+    if (data.error) {
+        throw new Error(data.error.message);
+    }
+
+    return data;
+}
+
 async function publishToFacebook(item, generatedContent) {
     const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
-    const pageId = process.env.FACEBOOK_PAGE_ID || 'me';
 
     if (alreadyPublished(item.contentHash)) {
         console.log(`[DUPLICATE] Skipping already published item: "${item.title}"`);
@@ -63,31 +89,12 @@ async function publishToFacebook(item, generatedContent) {
     }
 
     try {
-        const targetEndpoint = pageId === 'me' ? 'me/feed' : `${pageId}/feed`;
-        const url = `https://graph.facebook.com/v18.0/${targetEndpoint}`;
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                message: postMessage,
-                access_token: accessToken
-            })
-        });
-
-        const result = await response.json();
-        if (result.error) {
-            throw new Error(result.error.message);
-        }
-
-        console.log(`[SUCCESS] Published to Facebook! Post ID: ${result.id}`);
-        savePublished(item, result.id);
-        return { success: true, id: result.id };
+        const data = await postToFacebook(postMessage);
+        console.log(`[SUCCESS] Published to Facebook! Post ID: ${data.id}`);
+        savePublished(item, data.id);
+        return { success: true, id: data.id };
     } catch (error) {
         console.error(`[ERROR] Failed to publish to Facebook:`, error.message);
-        console.error(`[TIP] If posting to a Page gives permission error #200, you can set your FACEBOOK_PAGE_ID secret to 'me' to post directly to your personal profile timeline using your user token for instant testing!`);
         return { success: false, error: error.message };
     }
 }

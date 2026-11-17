@@ -22,52 +22,63 @@ Guidelines:
 Content Title: ${item.title}
 Content Source/Details: ${item.company || item.source || ''} - ${item.snippet || item.link || ''}
 Category: ${item.category}
-`;
+`.trim();
 
-    // 1. Try Gemini first using gemini-2.5-flash
+    let openai = null;
+    if (openaiApiKey && openaiApiKey !== 'your_openai_api_key_here') {
+        openai = new OpenAI({
+            apiKey: openaiApiKey
+        });
+    }
+
     if (geminiApiKey && geminiApiKey !== 'your_gemini_api_key_here') {
         try {
             const genAI = new GoogleGenerativeAI(geminiApiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            aiText = response.text().trim();
-        } catch (error) {
-            try {
-                // Fallback to gemini-1.5-flash
-                const genAI = new GoogleGenerativeAI(geminiApiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-                const result = await model.generateContent(prompt);
-                const response = await result.response;
-                aiText = response.text().trim();
-            } catch (err2) {
-                console.error('Gemini API error, trying OpenAI fallback:', err2.message);
+            const geminiModel = genAI.getGenerativeModel({
+                model: "gemini-2.5-flash"
+            });
+            const result = await geminiModel.generateContent(prompt);
+            aiText = result.response.text().trim();
+        } catch (geminiError) {
+            console.log("Gemini API error, trying OpenAI fallback:", geminiError.message);
+
+            if (!openai) {
+                aiText = prompt;
+            } else {
+                try {
+                    const response = await openai.chat.completions.create({
+                        model: "gpt-4o-mini",
+                        messages: [
+                            {
+                                role: "user",
+                                content: prompt
+                            }
+                        ]
+                    });
+                    aiText = response.choices[0].message.content.trim();
+                } catch (openaiError) {
+                    console.log("OpenAI API error, falling back to default template:", openaiError.message);
+                }
             }
         }
-    }
-
-    // 2. Try OpenAI if Gemini wasn't used or failed
-    if (!aiText && openaiApiKey && openaiApiKey !== 'your_openai_api_key_here') {
+    } else if (openai) {
         try {
-            if (process.env.OPENAI_API_KEY) {
-                const openai = new OpenAI({
-                    apiKey: process.env.OPENAI_API_KEY
-                });
-                const completion = await openai.chat.completions.create({
-                    model: "gpt-4o-mini",
-                    messages: [{ role: "user", content: prompt }],
-                    max_tokens: 250,
-                    temperature: 0.5,
-                });
-
-                aiText = completion.choices[0].message.content.trim();
-            }
-        } catch (error) {
-            console.error('OpenAI API error, falling back to default template:', error.message);
+            const response = await openai.chat.completions.create({
+                model: "gpt-4o-mini",
+                messages: [
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ]
+            });
+            aiText = response.choices[0].message.content.trim();
+        } catch (openaiError) {
+            console.log("OpenAI API error, falling back to default template:", openaiError.message);
         }
     }
 
-    // 3. Fallback template if no API keys are configured or both fail
+    // Fallback template if no API keys are configured or both fail
     if (!aiText) {
         if (item.category === 'Jobs') {
             aiText = `
@@ -106,7 +117,6 @@ ${item.link}
         }
     }
 
-    // Infographic template representation for Facebook
     const infographic = `
 ┌────────────────────────────────────────┐
 │ ${item.title.substring(0, 36).toUpperCase()}
