@@ -61,9 +61,11 @@ async function runWorkflow() {
         console.log(generated.caption);
         console.log(`------------------------------------`);
 
-        console.log(`\n--- [GENERATED INFOGRAPHIC PREVIEW] ---`);
-        console.log(generated.infographic);
-        console.log(`---------------------------------------`);
+        if (generated.infographicUrl) {
+            console.log(`\n--- [GENERATED INFOGRAPHIC IMAGE URL] ---`);
+            console.log(generated.infographicUrl);
+            console.log(`-----------------------------------------`);
+        }
 
         // 3. Publish to Facebook
         const fbResult = await publishToFacebook(item, generated);

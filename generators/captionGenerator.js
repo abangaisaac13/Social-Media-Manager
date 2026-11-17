@@ -11,13 +11,13 @@ async function generateSummaryAndCaption(item) {
 Summarize the following content item into:
 1. Headline
 2. Key Points (3)
-3. Why It Matters
-4. Call To Action
+3. Call To Action
 
 Guidelines:
 - Professional tone.
 - No sensationalism.
 - Maximum 120 words.
+- Do NOT include any "Why It Matters" section.
 
 Content Title: ${item.title}
 Content Source/Details: ${item.company || item.source || ''} - ${item.snippet || item.link || ''}
@@ -78,7 +78,7 @@ Category: ${item.category}
         }
     }
 
-    // Fallback template if no API keys are configured or both fail
+    // Fallback template if no API keys are configured or both fail (Without "Why It Matters")
     if (!aiText) {
         if (item.category === 'Jobs') {
             aiText = `
@@ -89,9 +89,6 @@ Key Points:
 1. Position currently open at ${item.company}.
 2. Great opportunity for career growth in ${item.location}.
 3. Apply promptly to secure consideration.
-
-Why It Matters:
-Securing stable employment boosts professional development and economic empowerment across the region.
 
 Call To Action:
 Apply via the link below:
@@ -107,9 +104,6 @@ Key Points:
 2. Key stakeholders are monitoring the situation closely.
 3. Long-term impacts expected across related sectors.
 
-Why It Matters:
-Staying informed helps professionals and community members make proactive, well-rounded decisions.
-
 Call To Action:
 Read the full article here:
 ${item.link}
@@ -117,23 +111,27 @@ ${item.link}
         }
     }
 
-    const infographic = `
-┌────────────────────────────────────────┐
-│ ${item.title.substring(0, 36).toUpperCase()}
-├────────────────────────────────────────┤
-│ • Professional opportunity / update    │
-│ • Verified reliable source             │
-│ • Actionable insights for you          │
-├────────────────────────────────────────┤
-│ Why It Matters: Empowerment & Growth   │
-└────────────────────────────────────────┘
-`.trim();
+    // Generate professional infographic image using DALL-E 3 if OpenAI key is available
+    let infographicUrl = null;
+    if (openai) {
+        try {
+            const imageResponse = await openai.images.generate({
+                model: "dall-e-3",
+                prompt: `A professional, clean, minimalist corporate infographic design for a social media post with the bold title "${item.title}". Modern color palette of deep navy blue, white, and slate grey. Clean sans-serif typography showing 3 key takeaway bullet points. Business presentation style, high resolution, easily understood at a glance, no clutter, no watermarks.`,
+                n: 1,
+                size: "1024x1024"
+            });
+            infographicUrl = imageResponse.data[0].url;
+        } catch (imageError) {
+            console.log("DALL-E image generation notice, proceeding with text-only caption:", imageError.message);
+        }
+    }
 
     const caption = `${aiText}\n\n#OpportunitiesAndInsightsAfrica #DailyOpportunityHub #CareerGrowth #News`;
 
     return {
         caption,
-        infographic
+        infographicUrl
     };
 }
 

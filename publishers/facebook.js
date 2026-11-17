@@ -41,21 +41,26 @@ function savePublished(item, fbResponseId) {
     }
 }
 
-async function postToFacebook(message) {
+async function postToFacebook(message, imageUrl) {
     const pageId = process.env.FACEBOOK_PAGE_ID || 'me';
     const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
 
+    const endpoint = imageUrl
+        ? `https://graph.facebook.com/v27.0/${pageId}/photos`
+        : `https://graph.facebook.com/v27.0/${pageId}/feed`;
+
+    const bodyData = imageUrl
+        ? { url: imageUrl, caption: message, access_token: accessToken }
+        : { message, access_token: accessToken };
+
     const response = await fetch(
-        `https://graph.facebook.com/v27.0/${pageId}/feed`,
+        endpoint,
         {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-                message,
-                access_token: accessToken
-            })
+            body: JSON.stringify(bodyData)
         }
     );
 
@@ -77,12 +82,15 @@ async function publishToFacebook(item, generatedContent) {
         return { success: true, skipped: true };
     }
 
-    const postMessage = `${generatedContent.caption}\n\n[Infographic Preview]\n${generatedContent.infographic}`;
+    const postMessage = generatedContent.caption;
 
     if (!accessToken || accessToken === 'your_facebook_access_token_here') {
         console.log(`[DRY RUN] Facebook Access Token not configured. Simulating post for: "${item.title}"`);
         console.log('--- Post Content ---');
         console.log(postMessage);
+        if (generatedContent.infographicUrl) {
+            console.log(`🖼️ Infographic Image URL: ${generatedContent.infographicUrl}`);
+        }
         console.log('--------------------');
 
         savePublished(item, 'dry-run-id-' + Date.now());
@@ -90,10 +98,11 @@ async function publishToFacebook(item, generatedContent) {
     }
 
     try {
-        const data = await postToFacebook(postMessage);
-        console.log(`[SUCCESS] Published to Facebook! Post ID: ${data.id}`);
-        savePublished(item, data.id);
-        return { success: true, id: data.id };
+        const data = await postToFacebook(postMessage, generatedContent.infographicUrl);
+        const postId = data.id || data.post_id;
+        console.log(`[SUCCESS] Published to Facebook! Post ID: ${postId}`);
+        savePublished(item, postId);
+        return { success: true, id: postId };
     } catch (error) {
         console.error(`[ERROR] Failed to publish to Facebook:`, error.message);
         return { success: false, error: error.message };
