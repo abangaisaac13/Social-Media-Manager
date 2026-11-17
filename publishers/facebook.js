@@ -43,7 +43,7 @@ function savePublished(item, fbResponseId) {
 
 async function publishToFacebook(item, generatedContent) {
     const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
-    const pageId = process.env.FACEBOOK_PAGE_ID;
+    const pageId = process.env.FACEBOOK_PAGE_ID || 'me';
 
     if (alreadyPublished(item.contentHash)) {
         console.log(`[DUPLICATE] Skipping already published item: "${item.title}"`);
@@ -52,8 +52,8 @@ async function publishToFacebook(item, generatedContent) {
 
     const postMessage = `${generatedContent.caption}\n\n[Infographic Preview]\n${generatedContent.infographic}`;
 
-    if (!accessToken || !pageId || accessToken === 'your_facebook_access_token_here') {
-        console.log(`[DRY RUN] Facebook Credentials not configured. Simulating post for: "${item.title}"`);
+    if (!accessToken || accessToken === 'your_facebook_access_token_here') {
+        console.log(`[DRY RUN] Facebook Access Token not configured. Simulating post for: "${item.title}"`);
         console.log('--- Post Content ---');
         console.log(postMessage);
         console.log('--------------------');
@@ -63,7 +63,10 @@ async function publishToFacebook(item, generatedContent) {
     }
 
     try {
-        const url = `https://graph.facebook.com/v18.0/${pageId}/feed`;
+        // If FACEBOOK_PAGE_ID is 'me', post to personal timeline, otherwise post to page feed
+        const targetEndpoint = pageId === 'me' ? 'me/feed' : `${pageId}/feed`;
+        const url = `https://graph.facebook.18.0/v18.0/${targetEndpoint}`;
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -85,6 +88,7 @@ async function publishToFacebook(item, generatedContent) {
         return { success: true, id: result.id };
     } catch (error) {
         console.error(`[ERROR] Failed to publish to Facebook:`, error.message);
+        console.error(`[TIP] If posting to a Page gives permission error #200, you can set your FACEBOOK_PAGE_ID secret to 'me' to post directly to your personal profile timeline using your user token for instant testing!`);
         return { success: false, error: error.message };
     }
 }
