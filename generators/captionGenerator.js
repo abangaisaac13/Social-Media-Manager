@@ -77,22 +77,22 @@ Category: ${item.category}
     if (geminiApiKey && geminiApiKey !== 'your_gemini_api_key_here') {
         try {
             const genAI = new GoogleGenerativeAI(geminiApiKey);
-            const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            const geminiModel = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
             const result = await geminiModel.generateContent(prompt);
             aiText = result.response.text().trim();
-            console.log("Successfully generated summary using Gemini 2.5 Flash.");
+            console.log("Successfully generated summary using Gemini 3.8 Flash.");
         } catch (geminiError) {
             console.error("Gemini API Error Details:", geminiError.message);
 
-            // Fallback to gemini-2.0-flash
+            // Fallback to gemini-1.5-flash
             try {
                 const genAI = new GoogleGenerativeAI(geminiApiKey);
-                const fallbackModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+                const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
                 const fallbackResult = await fallbackModel.generateContent(prompt);
                 aiText = fallbackResult.response.text().trim();
-                console.log("Successfully generated summary using Gemini 2.0 Flash fallback.");
+                console.log("Successfully generated summary using Gemini 1.5 Flash fallback.");
             } catch (fallbackError) {
-                console.error("Gemini 2.0 Flash Fallback Error Details:", fallbackError.message);
+                console.error("Gemini 1.5 Flash Fallback Error Details:", fallbackError.message);
             }
         }
     }
@@ -119,7 +119,7 @@ ${item.link}
 📌 HEADLINE: ${item.title}
 📰 Source: ${item.source || 'Trusted Source'}
 
-Key Points:
+KeyPoints:
 1. Important development regarding ${item.title.toLowerCase()}.
 2. Key updates and community impacts being monitored.
 3. Insights for professionals and stakeholders.
@@ -136,7 +136,7 @@ What are your thoughts on this? Drop a comment below, like this post, and share 
         if (!finalAiText.includes(item.link)) {
             finalAiText += `\n\nApply via official link:\n${item.link}`;
         }
-        if (!finalAiTest.includes('Safety Reminder')) {
+        if (!finalAiText.includes('Safety Reminder')) {
             finalAiText += `\n\n⚠️ Safety Reminder: While we curate opportunities from trusted sources, please exercise caution. Never pay any money or fees to apply or secure employment.`;
         }
     }
