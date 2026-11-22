@@ -1,10 +1,56 @@
+const fs = require('fs');
+const path = require('path');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const OpenAI = require('openai');
+
+const CACHE_PATH = path.join(__dirname, '../storage/cache.json');
+
+function ensureCache() {
+    const dir = path.dirname(CACHE_PATH);
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+    if (!fs.existsSync(CACHE_PATH)) {
+        fs.writeFileSync(CACHE_PATH, JSON.stringify({}, null, 2));
+    }
+}
+
+function getCachedGeneration(contentHash) {
+    ensureCache();
+    try {
+        const cache = JSON.parse(fs.readFileSync(CACHE_PATH, 'utf8'));
+        return cache[contentHash] || null;
+    } catch (error) {
+        console.error('Error reading cache:', error.message);
+        return null;
+    }
+}
+
+function saveCachedGeneration(contentHash, result) {
+    ensureCache();
+    try {
+        const cache = JSON.parse(fs.readFileSync(CACHE_PATH, 'utf8'));
+        cache[contentHash] = {
+            ...result,
+            cachedAt: new Date().toISOString()
+        };
+        fs.writeFileSync(CACHE_PATH, JSON.stringify(cache, null, 2));
+    } catch (error) {
+        console.error('Error saving cache:', error.message);
+    }
+}
 
 async function generateSummaryAndCaption(item) {
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    const openaiApiKey = process.env.OPENAI_API_KEY;
+    // Check cache first for instant performance and zero API rate limit usage
+    const cached = getCachedGeneration(item.contentHash);
+    if (cached) {
+        console.log(`[CACHE HIT] Using cached summary & caption for: "${item.title}"`);
+        return {
+            caption: cached.caption,
+            infographic: cached.infographic
+        };
+    }
 
+    const geminiApiKey = process.env.GEMINI_API_KEY;
     let aiText = '';
     const isJob = item.category === 'Jobs';
 
@@ -28,53 +74,32 @@ Content Source/Details: ${item.company || item.source || ''} - ${item.snippet ||
 Category: ${item.category}
 `.trim();
 
-    let genAI = null;
     if (geminiApiKey && geminiApiKey !== 'your_gemini_api_key_here') {
-        genAI = new GoogleGenerativeAI(geminiApiKey);
-    }
-
-    let openai = null;
-    if (openaiApiKey && openaiApiKey !== 'your_openai_api_key_here') {
-        openai = new OpenAI({ apiKey: openaiApiKey });
-    }
-
-    // 1. Try Gemini using the latest model (gemini-2.5-flash)
-    if (genAI) {
         try {
+            const genAI = new GoogleGenerativeAI(geminiApiKey);
             const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
             const result = await geminiModel.generateContent(prompt);
             aiText = result.response.text().trim();
-            console.log("Successfully generated text using Gemini 2.5 Flash.");
+            console.log("Successfully generated summary using Gemini 2.5 Flash.");
         } catch (geminiError) {
             console.error("Gemini API Error Details:", geminiError.message);
 
-            // Try fallback to gemini-2.0-flash or gemini-1.5-flash if 2.5 encounters an issue
+            // Fallback to gemini-2.0-flash
             try {
+                const genAI = new GoogleGenerativeAI(geminiApiKey);
                 const fallbackModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
                 const fallbackResult = await fallbackModel.generateContent(prompt);
                 aiText = fallbackResult.response.text().trim();
-                console.log("Successfully generated text using Gemini 2.0 Flash fallback.");
+                console.log("Successfully generated summary using Gemini 2.0 Flash fallback.");
             } catch (fallbackError) {
                 console.error("Gemini 2.0 Flash Fallback Error Details:", fallbackError.message);
             }
         }
     }
 
-    // 2. Fallback to OpenAI if Gemini failed
-    if (!aiText && openai) {
-        try {
-            const response = await openai.chat.completions.create({
-                model: "gpt-4o-mini",
-                messages: [{ role: "user", content: prompt }]
-            });
-            aiText = response.choices[0].message.content.trim();
-        } catch (openaiError) {
-            console.error("OpenAI API Error Details:", openaiError.message);
-        }
-    }
-
-    // 3. Ultimate Fallback Template
+    // Fallback template if Gemini key not set or generation fails
     if (!aiText) {
+        console.log("Using default fallback template for summary.");
         if (isJob) {
             aiText = `
 📌 HEADLINE: ${item.title} at ${item.company || 'Verified Employer'}
@@ -111,12 +136,11 @@ What are your thoughts on this? Drop a comment below, like this post, and share 
         if (!finalAiText.includes(item.link)) {
             finalAiText += `\n\nApply via official link:\n${item.link}`;
         }
-        if (!finalAiText.includes('Safety Reminder')) {
+        if (!finalAiTest.includes('Safety Reminder')) {
             finalAiText += `\n\n⚠️ Safety Reminder: While we curate opportunities from trusted sources, please exercise caution. Never pay any money or fees to apply or secure employment.`;
         }
     }
 
-    // Generate a clean, professional visual infographic card layout (text-based visual card)
     const infographic = `
 ╔════════════════════════════════════════╗
 ║ 🌟 ${item.title.substring(0, 38).toUpperCase()}
@@ -127,14 +151,15 @@ What are your thoughts on this? Drop a comment below, like this post, and share 
 ╚════════════════════════════════════════╝
 `.trim();
 
-    const caption = `${finalAiText}\n\n#OpportunitiesAndInsightsAfrica #DailyOpportunityHub #CareerGrowth #News`;
-
-    return {
-        caption,
-        infographic,
-        infographicUrl: null,
-        imageBuffer: null
+    const generationResult = {
+        caption: `${finalAiText}\n\n#OpportunitiesAndInsightsAfrica #DailyOpportunityHub #CareerGrowth #News`,
+        infographic
     };
+
+    // Save to local cache file for high performance & rate limit protection
+    saveCachedGeneration(item.contentHash, generationResult);
+
+    return generationResult;
 }
 
 module.exports = { generateSummaryAndCaption };
