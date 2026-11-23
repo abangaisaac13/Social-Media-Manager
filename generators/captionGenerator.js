@@ -39,16 +39,14 @@ function saveCachedGeneration(contentHash, result) {
     }
 }
 
-// Enhanced security: Sanitize text input to block injection and malicious payloads
 function sanitizeInput(str) {
     if (!str || typeof str !== 'string') return '';
     return str
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // remove script tags
-        .replace(/<[^>]*>/g, '') // remove HTML tags
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/<[^>]*>/g, '')
         .trim();
 }
 
-// Enhanced security: Validate URLs strictly
 function isValidUrl(url) {
     if (!url || typeof url !== 'string') return false;
     try {
@@ -59,22 +57,64 @@ function isValidUrl(url) {
     }
 }
 
+// Generate professional job flyer or news visual using Gemini Imagen 3 REST API
+async function generateGeminiVisual(item, isJob) {
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey || geminiApiKey === 'your_gemini_api_key_here') return null;
+
+    const safeTitle = sanitizeInput(item.title);
+    const safeCompany = sanitizeInput(item.company || 'Verified Employer');
+
+    const prompt = isJob
+        ? `A professional, clean, minimalist corporate job advertisement flyer for "${safeTitle}" at "${safeCompany}". High-end graphic design, modern navy blue and clean white color palette, professional typography highlighting remote career opportunity, clean layout, no clutter, stunning marketing flyer designed by a professional artist.`
+        : `A professional, clean, minimalist corporate news visual graphic for "${safeTitle}". Modern navy blue and slate grey color palette, high-end presentation style, clean typography, engaging editorial graphic design.`;
+
+    try {
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${geminiApiKey}`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    prompt,
+                    parameters: {
+                        sampleCount: 1,
+                        aspectRatio: "1:1"
+                    }
+                })
+            }
+        );
+
+        const data = await response.json();
+        if (data && data.predictions && data.predictions[0] && data.predictions[0].bytesBase64Encoded) {
+            const base64Bytes = data.predictions[0].bytesBase64Encoded;
+            console.log("[GEMINI IMAGEN] Successfully generated professional job flyer/visual image!");
+            return Buffer.from(base64Bytes, 'base64');
+        } else if (data.error) {
+            console.log("[GEMINI IMAGEN] Notice:", data.error.message);
+        }
+    } catch (error) {
+        console.error("[GEMINI IMAGEN] Error generating image via Gemini:", error.message);
+    }
+    return null;
+}
+
 async function generateSummaryAndCaption(item) {
     try {
-        // Sanitize incoming item fields for security
         const safeTitle = sanitizeInput(item.title);
         const safeCompany = sanitizeInput(item.company || item.source || '');
         const safeSnippet = sanitizeInput(item.snippet || '');
         const safeLink = isValidUrl(item.link) ? item.link : '';
         const isJob = item.category === 'Jobs';
 
-        // Check cache first for instant performance and zero API rate limit usage
+        // Check cache first for instant performance
         const cached = getCachedGeneration(item.contentHash);
         if (cached) {
-            console.log(`[CACHE HIT] Using cached summary & caption for: "${safeTitle}"`);
+            console.log(`[CACHE HIT] Using cached summary & visual for: "${safeTitle}"`);
             return {
                 caption: cached.caption,
-                infographicUrl: cached.infographicUrl
+                infographicUrl: cached.infographicUrl,
+                imageBuffer: cached.imageBuffer ? Buffer.from(cached.imageBuffer) : null
             };
         }
 
@@ -93,7 +133,7 @@ Guidelines:
 - Maximum 140 words.
 - Do NOT include any "Why It Matters" section.
 ${isJob
-    ? '- For this Job Listing: The Call To Action must direct interested candidates to apply via the official link provided.'
+    ? '- For this Job Listing: The Call To Action must direct interested candidates (qualified Africans and global remote talent) to apply via the official link provided.'
     : '- For this News/Update: The Call To Action must strictly encourage social engagement only (e.g., inviting comments, likes, shares, or reposts). Do NOT direct users to visit external websites or links.'}
 
 Content Title: ${safeTitle}
@@ -111,7 +151,6 @@ Category: ${sanitizeInput(item.category)}
             } catch (geminiError) {
                 console.error("Gemini API Error Details:", geminiError.message);
 
-                // Fallback to gemini-1.5-flash
                 try {
                     const genAI = new GoogleGenerativeAI(geminiApiKey);
                     const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -124,16 +163,16 @@ Category: ${sanitizeInput(item.category)}
             }
         }
 
-        // Fallback template if Gemini key not set or generation fails
+        // Fallback template if Gemini fails
         if (!aiText) {
             console.log("Using default professional fallback template for summary.");
             if (isJob) {
                 aiText = `
 📌 HEADLINE: ${safeTitle} at ${safeCompany || 'Verified Employer'}
-📍 Location: ${sanitizeInput(item.location || 'Remote / Various')}
+📍 Location: ${sanitizeInput(item.location || 'Remote / Africa & Worldwide')}
 
 Key Points:
-1. Position currently open with verified requirements.
+1. Position currently open with verified requirements, open to qualified professionals across Africa and worldwide.
 2. Excellent opportunity for career growth and professional advancement.
 3. Qualified candidates are encouraged to apply promptly.
 
@@ -161,7 +200,6 @@ What are your thoughts on this? Drop a comment below, like this post, and share 
             }
         }
 
-        // Ensure Job listings include application link and safety disclaimer
         let finalAiText = aiText;
         if (isJob) {
             if (safeLink && !finalAiText.includes(safeLink)) {
@@ -172,24 +210,29 @@ What are your thoughts on this? Drop a comment below, like this post, and share 
             }
         }
 
-        // Guaranteed professional image graphic URL for Facebook photo publishing
-        const cleanTitleForImage = safeTitle.length > 55 ? safeTitle.substring(0, 52) + '...' : safeTitle;
-        const infographicUrl = `https://via.placeholder.com/1024x1024/0A192F/FFFFFF?text=${encodeURIComponent(cleanTitleForImage)}`;
+        // Generate professional flyer/image using Gemini Imagen 3
+        const imageBuffer = await generateGeminiVisual(item, isJob);
+        const infographicUrl = !imageBuffer ? `https://via.placeholder.com/1024x1024/0A192F/FFFFFF?text=${encodeURIComponent(safeTitle.substring(0, 45))}` : null;
 
         const generationResult = {
             caption: `${finalAiText}\n\n#OpportunitiesAndInsightsAfrica #DailyOpportunityHub #CareerGrowth #News`,
-            infographicUrl
+            infographicUrl,
+            imageBuffer: imageBuffer ? imageBuffer.toString('base64') : null
         };
 
-        // Save to cache securely
         saveCachedGeneration(item.contentHash, generationResult);
 
-        return generationResult;
+        return {
+            caption: generationResult.caption,
+            infographicUrl: generationResult.infographicUrl,
+            imageBuffer
+        };
     } catch (error) {
         console.error('[EXCEPTION] Professional error handling caught in generateSummaryAndCaption:', error.message);
         return {
             caption: `📌 UPDATE: ${sanitizeInput(item.title)}\n\nExplore this update today!\n\n#OpportunitiesAndInsightsAfrica #DailyOpportunityHub`,
-            infographicUrl: `https://via.placeholder.com/1024x1024/0A192F/FFFFFF?text=Opportunities+Africa`
+            infographicUrl: `https://via.placeholder.com/1024x1024/0A192F/FFFFFF?text=Opportunities+Africa`,
+            imageBuffer: null
         };
     }
 }
