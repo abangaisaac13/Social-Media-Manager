@@ -41,9 +41,40 @@ function savePublished(item, fbResponseId) {
     }
 }
 
+async function getPageAccessToken(accessToken, pageId) {
+    try {
+        console.log(`[FACEBOOK] Resolving Page Access Token for Page ID: ${pageId}...`);
+        const response = await fetch(`https://graph.facebook.com/v27.0/me/accounts?access_token=${accessToken}`);
+        const data = await response.json();
+
+        if (data.error) {
+            console.log(`[FACEBOOK] Notice while resolving page token: ${data.error.message}`);
+            return accessToken;
+        }
+
+        if (data && data.data) {
+            const matchedPage = data.data.find(p => p.id === pageId);
+            if (matchedPage && matchedPage.access_token) {
+                console.log(`[FACEBOOK] Successfully resolved Page Access Token for: "${matchedPage.name}" (${matchedPage.id})`);
+                return matchedPage.access_token;
+            } else {
+                console.log(`[FACEBOOK] Page ID ${pageId} not found in user/system user accounts list. Using provided token.`);
+            }
+        }
+    } catch (error) {
+        console.log("[FACEBOOK] Error auto-fetching page access token:", error.message);
+    }
+    return accessToken;
+}
+
 async function postToFacebook(message, imageUrl, imageBuffer) {
     const pageId = process.env.FACEBOOK_PAGE_ID || 'me';
-    const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
+    let accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
+
+    // Automatically resolve Page Access Token from User or System User token if needed
+    if (pageId !== 'me' && accessToken) {
+        accessToken = await getPageAccessToken(accessToken, pageId);
+    }
 
     const endpoint = (imageUrl || imageBuffer)
         ? `https://graph.facebook.com/v27.0/${pageId}/photos`
