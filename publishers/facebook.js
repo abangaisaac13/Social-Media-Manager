@@ -67,7 +67,7 @@ async function getPageAccessToken(accessToken, pageId) {
     return accessToken;
 }
 
-async function postToFacebook(message, imageUrl, imageBuffer) {
+async function postToFacebook(message, imageUrl, imageBuffer, isPinned = false) {
     const pageId = process.env.FACEBOOK_PAGE_ID || 'me';
     let accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
 
@@ -126,13 +126,33 @@ async function postToFacebook(message, imageUrl, imageBuffer) {
         throw new Error(data.error.message);
     }
 
+    const postId = data.id || data.post_id;
+
+    // Pin post to top of page if requested
+    if (isPinned && postId) {
+        try {
+            console.log(`[FACEBOOK] Pinning post ID ${postId} to the top of the page...`);
+            const pinResponse = await fetch(`https://graph.facebook.com/v27.0/${postId}?is_pinned=true&access_token=${accessToken}`, {
+                method: "POST"
+            });
+            const pinData = await pinResponse.json();
+            if (pinData.success || pinData.success === undefined) {
+                console.log(`[FACEBOOK] Successfully pinned post ${postId} to the top of the Facebook page!`);
+            } else {
+                console.log(`[FACEBOOK] Notice while pinning post:`, pinData);
+            }
+        } catch (pinErr) {
+            console.log(`[FACEBOOK] Could not pin post:`, pinErr.message);
+        }
+    }
+
     return data;
 }
 
-async function publishToFacebook(item, generatedContent) {
+async function publishToFacebook(item, generatedContent, isPinned = false) {
     const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
 
-    if (alreadyPublished(item.contentHash)) {
+    if (!isPinned && alreadyPublished(item.contentHash)) {
         console.log(`[DUPLICATE] Skipping already published item: "${item.title}"`);
         return { success: true, skipped: true };
     }
@@ -144,9 +164,12 @@ async function publishToFacebook(item, generatedContent) {
         console.log('--- Post Content ---');
         console.log(postMessage);
         if (generatedContent.imageBuffer) {
-            console.log(`🖼️ Gemini Infographic Image Buffer generated successfully (${generatedContent.imageBuffer.length} bytes).`);
+            console.log(`🖼️ Infographic Image Buffer generated successfully (${generatedContent.imageBuffer.length} bytes).`);
         } else if (generatedContent.infographicUrl) {
             console.log(`🖼️ Infographic Image URL: ${generatedContent.infographicUrl}`);
+        }
+        if (isPinned) {
+            console.log(`📌 [PINNED POST] This post will be pinned to the top of the page.`);
         }
         console.log('--------------------');
 
@@ -155,9 +178,9 @@ async function publishToFacebook(item, generatedContent) {
     }
 
     try {
-        const data = await postToFacebook(postMessage, generatedContent.infographicUrl, generatedContent.imageBuffer);
+        const data = await postToFacebook(postMessage, generatedContent.infographicUrl, generatedContent.imageBuffer, isPinned);
         const postId = data.id || data.post_id;
-        console.log(`[SUCCESS] Published to Facebook! Post ID: ${postId}`);
+        console.log(`[SUCCESS] Published to Facebook! Post ID: ${postId} ${isPinned ? '(PINNED TO TOP)' : ''}`);
         savePublished(item, postId);
         return { success: true, id: postId };
     } catch (error) {

@@ -2,6 +2,7 @@ const { fetchJobs } = require('./collectors/jobs');
 const { fetchLocalNews } = require('./collectors/localNews');
 const { fetchWorldNews } = require('./collectors/worldNews');
 const { generateSummaryAndCaption } = require('./generators/captionGenerator');
+const { generateJobDigest } = require('./generators/jobDigestGenerator');
 const { generateTikTokScript } = require('./generators/tiktokScriptGenerator');
 const { publishToFacebook } = require('./publishers/facebook');
 const { queueTikTokContent } = require('./publishers/tiktok');
@@ -28,6 +29,28 @@ async function runWorkflow() {
     console.log(`- Collected ${jobs.length} jobs`);
     console.log(`- Collected ${localNews.length} local news items`);
     console.log(`- Collected ${worldNews.length} world news items`);
+
+    // 1.5 Generate and Pin Opportunities Digest (Categorized Local Ghana & International)
+    console.log('\n📌 Generating Pinned Opportunities Digest (Ghana & International)...');
+    try {
+        const digest = await generateJobDigest(jobs);
+        const digestItem = {
+            title: "Pinned Opportunities Digest: Ghana & International Jobs",
+            category: "Jobs",
+            contentHash: "pinned-digest-" + new Date().toISOString().split('T')[0],
+            link: "https://github.com/abangaisaac13/Social-Media-Manager"
+        };
+        const digestGenerated = {
+            caption: digest.digestText,
+            infographicUrl: `https://via.placeholder.com/1024x1024/0A192F/FFFFFF?text=Verified+Jobs+Digest+Ghana+%26+Global`,
+            imageBuffer: null
+        };
+
+        console.log(`- Digest compiled: ${digest.localCount} Local (Ghana) jobs, ${digest.internationalCount} International jobs.`);
+        await publishToFacebook(digestItem, digestGenerated, true); // true = pin to top of page
+    } catch (digestError) {
+        console.error('Error generating or publishing pinned job digest:', digestError.message);
+    }
 
     const queue = [
         ...jobs.map(item => ({ ...item, category: 'Jobs' })),
